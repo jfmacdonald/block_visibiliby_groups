@@ -161,7 +161,7 @@ class BlockVisibilityGroupsWeightTest extends BrowserTestBase {
     $this->assertBlockOrder($block_ids);
   }
 
-  public function DONTtestWeightRange() {
+  public function testWeightRange() {
     $this->placeGlobalBlocks();
     $this->placeGroupBlocks('group1');
     $this->placeGroupBlocks('group2');
