@@ -5,7 +5,14 @@ namespace Drupal\Tests\block_visibility_groups\Functional;
 use Drupal\Tests\BrowserTestBase;
 use Drupal\block_visibility_groups\Entity\BlockVisibilityGroup;
 
-
+/**
+ * Class BlockVisibilityGroupsWeightTest tests block weight settings
+ *
+ * @package Drupal\Tests\block_visibility_groups\Functional
+ *
+ * @group block_visibility_groups
+ *
+ */
 class BlockVisibilityGroupsWeightTest extends BrowserTestBase {
 
   /**
