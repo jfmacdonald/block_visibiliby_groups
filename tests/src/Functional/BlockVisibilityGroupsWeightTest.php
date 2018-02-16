@@ -23,8 +23,6 @@ class BlockVisibilityGroupsWeightTest extends BrowserTestBase {
   public static $modules = [
     'block',
     'block_visibility_groups',
-    'devel',
-    'kint',
   ];
 
   /**
