@@ -217,6 +217,17 @@ class BlockVisibilityGroupedListBuilder extends BlockListBuilder {
    */
   protected function buildBlocksForm() {
     $form = parent::buildBlocksForm();
+
+    // set weight deltas based on total number of blocks
+    $entity_ids = parent::getEntityIds();
+    $weight_delta = round(count($entity_ids) / 2);
+    foreach ($entity_ids as $entity_id) {
+      if (key_exists($entity_id, $form) && key_exists('weight',
+          $form[$entity_id])) {
+        $form[$entity_id]['weight']['#delta'] = $weight_delta;
+      }
+    }
+    
     $show_global_in_group = $this->getShowGlobalWithGroup();
     if ($block_visibility_group = $this->getBlockVisibilityGroup(TRUE)) {
       foreach ($form as &$row_info) {
