@@ -45,6 +45,13 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   protected $blockValues;
 
   /**
+   * Order of global and group blocks that should not change
+   *
+   * @var array
+   */
+  protected $stable_order;
+
+  /**
    * The virtual user administrating the test
    *
    * @var
@@ -140,6 +147,8 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
 
     ];
 
+    $this->stable_order = ['g1', 'g2', 'g3', 'b1', 'b2', 'b3'];
+
     // get block admin page
     $this->path = $this->getBlockLayoutPage('ALL-GROUP');
 
@@ -233,6 +242,10 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   /**
    * Test block reordering by dragging rows - showing global blocks
    *
+   * Until dragTo() issue is resolved, must only drag upper to lower
+   *
+   * @see https://www.drupal.org/node/2769825
+   *
    */
   public function testBlockReorderByDraggingShowGlobal() {
     // show Group A with Globals
@@ -240,14 +253,14 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $this->setShowGlobal(TRUE);
 
     // swap a1 and a2 order and save
-    $this->dragBlockToTarget('a2', 'a1');
-    $this->submitForm([], 'Save blocks');
+    $this->dragBlockToTarget('a1', 'a2');
+    $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
 
     // test order
-    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
+    $msg = "Dragging a1 to a2 with global blocks showing";
     $this->getBlockLayoutPage('ALL-GROUP');
-    $this->assertBlockOrder($expected_order,
-      "Dragging a2 to a1 with global blocks showing.");
+    $this->assertBlockOrder(['a2', 'a1'], $msg);
+    $this->assertBlockOrder($this->stable_order, $msg);
   }
 
 
@@ -260,15 +273,23 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     // show Group A without Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(FALSE);
+    $page = $this->getSession()->getPage();
+    $this->assertFalse($page->has('xpath',
+      '//div[class="messages messages--error"]'),
+      "Illegal choice detected with global blocks hidden.");
 
     // swap a1 and a2
     $this->dragBlockToTarget('a1', 'a2');
+    $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
+    $this->assertFalse($page->has('xpath',
+      '//div[class="messages messages--error"]'),
+      "Illegal choice detected with global blocks hidden.");
 
     // test order
-    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
+    $msg = "Dragging a1 to a2 with global blocks hidden";
     $this->getBlockLayoutPage('ALL-GROUP');
-    $this->assertBlockOrder($expected_order,
-      "Dragging a1 to a2 with global blocks hidden.");
+    $this->assertBlockOrder(['a2', 'a1'], $msg);
+    $this->assertBlockOrder($this->stable_order, $msg);
   }
 
 
@@ -356,19 +377,28 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   protected function dragBlockToTarget($dragged_block_id, $target_block_id) {
     $page = $this->getSession()->getPage();
     $handle = ".//a[@class='tabledrag-handle']";
+
+    // get dragged's handle
     $query = "//tr[@data-drupal-selector='edit-blocks-$dragged_block_id']";
     $row = $page->find('xpath', $query);
     $this->assertNotNull($row, "failed $query");
     $dragged = $row->find('xpath', $handle);
     $this->assertNotNull($dragged, "failed $query/$handle");
+
+    // get target's handle
     $query = "//tr[@data-drupal-selector='edit-blocks-$target_block_id']";
     $row = $page->find('xpath', $query);
     $this->assertNotNull($row, "failed $query");
     $target = $row->find('xpath', $handle);
     $this->assertNotNull($target, "failed $query/$handle");
+
+    // drag and give JavaScript some time to manipulate DOM
     $dragged->dragTo($target);
+    // @todo: do we need this?
+    $this->assertJsCondition('jQuery(".tabledrag-changed-warning").is(":visible")');
+    $this->assertFalse($page->has('css', '.messages.messages--error'),
+      "Illegal choice detected after dragging.");
     $this->assertSession()->pageTextContains('You have unsaved changes.');
-    $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
   }
 
   /**
