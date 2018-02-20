@@ -217,6 +217,15 @@ class BlockVisibilityGroupedListBuilder extends BlockListBuilder {
    */
   protected function buildBlocksForm() {
     $form = parent::buildBlocksForm();
+
+    // Visually hide blocks not shown in this visibility group.
+    $entity_ids = $this->getEntityIds();
+    $group_entity_ids = $this->getGroupEntityIds();
+    foreach ($entity_ids as $entity_id) {
+      if (isset($form[$entity_id]) && !in_array($entity_id, $group_entity_ids)) {
+        $form[$entity_id]['#attributes']['class'][] = 'visually-hidden';
+      }
+    }
     $show_global_in_group = $this->getShowGlobalWithGroup();
     if ($block_visibility_group = $this->getBlockVisibilityGroup(TRUE)) {
       foreach ($form as &$row_info) {
@@ -278,12 +287,10 @@ $row_info['title']['#url'] = $url;
   }
 
   /**
-   * {@inheritdoc}
-   *
-   * Unset blocks that should not be shown with current group.
+   * Loads entity IDs for blocks that should be shown with the current group.
    */
-  protected function getEntityIds() {
-    $entity_ids = parent::getEntityIds();
+  protected function getGroupEntityIds() {
+    $entity_ids = $this->getEntityIds();
     $current_block_visibility_group = $this->getCurrentBlockVisibilityGroup();
     $show_global_in_group = $this->getShowGlobalWithGroup();
     if (!empty($current_block_visibility_group)
