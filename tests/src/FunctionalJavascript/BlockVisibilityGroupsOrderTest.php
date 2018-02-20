@@ -190,11 +190,11 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   }
 
   /**
-   * Test reordering blocks by changing weights
+   * Test reordering blocks by changing weights - showing global blocks
    *
    * @throws \Behat\Mink\Exception\ElementNotFoundException
    */
-  public function testBlockReorderByWeight() {
+  public function testBlockReorderByWeightShowGlobal() {
 
     // show Group A with Globals
     $this->getBlockLayoutPage('group_a');
@@ -207,25 +207,34 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $this->getBlockLayoutPage('ALL-GROUP');
     $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
     $this->assertBlockOrder($expected_order,
-      "Reorder Group A with 'Show global' checked.");
+      "Swapping a1, a2 weights with global blocks showing.");
 
-    // now, show Group A only and reset original weights
-    $this->getBlockLayoutPage('group_a');
-    $this->setShowGlobal(FALSE);
-    $this->setWeights(['a1' => 1, 'a2' => 3]);
-
-    // Retest block order
-    $this->getBlockLayoutPage('ALL-GROUP');
-    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a1', 'b2', 'a2', 'b3'];
-    $this->assertBlockOrder($expected_order,
-      "Reorder Group A with 'Show global' unchecked.");
   }
 
   /**
-   * Test block reordering by dragging rows
+   * Test reordering blocks by changing weights - hiding global blocks
+   *
+   * @throws \Behat\Mink\Exception\ElementNotFoundException
+   */
+  public function testBlockReorderByWeightHideGlobal() {
+
+    // show Group A only and reset original weights
+    $this->getBlockLayoutPage('group_a');
+    $this->setShowGlobal(FALSE);
+    $this->setWeights(['a1' => 3, 'a2' => 1]);
+
+    // test block order
+    $this->getBlockLayoutPage('ALL-GROUP');
+    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
+    $this->assertBlockOrder($expected_order,
+      "Swapping a1, a2 weights with global blocks hidden.");
+  }
+
+  /**
+   * Test block reordering by dragging rows - showing global blocks
    *
    */
-  public function testBlockReorderByDrag() {
+  public function testBlockReorderByDraggingShowGlobal() {
     // show Group A with Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(TRUE);
@@ -238,20 +247,28 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
     $this->getBlockLayoutPage('ALL-GROUP');
     $this->assertBlockOrder($expected_order,
-      "Dragging a2 to a1 with 'Show Global Blocks' checked.");
+      "Dragging a2 to a1 with global blocks showing.");
+  }
+
+
+  /**
+   * Test block reordering by dragging rows - hiding global blocks
+   *
+   */
+  public function testBlockReorderByDraggingHideGlobal() {
 
     // show Group A without Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(FALSE);
 
-    // swap a1 and a2 again to restore original order
+    // swap a1 and a2
     $this->dragBlockToTarget('a1', 'a2');
 
     // test order
-    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a1', 'b2', 'a2', 'b3'];
+    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
     $this->getBlockLayoutPage('ALL-GROUP');
     $this->assertBlockOrder($expected_order,
-      "Dragging a1 to a2 with 'Show Global Blocks' unchecked.");
+      "Dragging a1 to a2 with global blocks hidden.");
   }
 
 
