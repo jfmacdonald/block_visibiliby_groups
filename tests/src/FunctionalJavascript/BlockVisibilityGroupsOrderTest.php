@@ -242,8 +242,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   /**
    * Test block reordering by dragging rows - showing global blocks
    *
-   * Until dragTo() issue is resolved, must only drag upper to lower
-   *
+   * Until dragTo() issue is resolved, must only drag higher value to lower
    * @see https://www.drupal.org/node/2769825
    *
    */
@@ -253,7 +252,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $this->setShowGlobal(TRUE);
 
     // swap a1 and a2 order and save
-    $this->dragBlockToTarget('a1', 'a2');
+    $this->dragBlockToTarget('a2', 'a1');
     $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
 
     // test order
@@ -267,6 +266,9 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   /**
    * Test block reordering by dragging rows - hiding global blocks
    *
+   * Until dragTo() issue is resolved, must only drag higher value to lower
+   * @see https://www.drupal.org/node/2769825
+   *
    */
   public function testBlockReorderByDraggingHideGlobal() {
 
@@ -279,7 +281,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
       "Illegal choice detected with global blocks hidden.");
 
     // swap a1 and a2
-    $this->dragBlockToTarget('a1', 'a2');
+    $this->dragBlockToTarget('a2', 'a1');
     $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
     $this->assertFalse($page->has('xpath',
       '//div[class="messages messages--error"]'),
