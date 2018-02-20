@@ -172,7 +172,28 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $this->assertBlockOrder($expected_order);
   }
 
+  /**
+   * Check that blocks have full weight range available
+   */
+  public function testWeightRange() {
 
+    // check placed
+    $this->assertBlocksPlaced();
+
+    // test weight range for a global block
+    $this->getBlockLayoutPage();
+    $this->assertWeightRange('g1');
+
+    // test weight range for a group block
+    $this->getBlockLayoutPage('group_a');
+    $this->assertWeightRange('a1');
+  }
+
+  /**
+   * Test reordering blocks by changing weights
+   *
+   * @throws \Behat\Mink\Exception\ElementNotFoundException
+   */
   public function testBlockReorderByWeight() {
 
     // show Group A with Globals
@@ -200,66 +221,39 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
       "Reorder Group A with 'Show global' unchecked.");
   }
 
+  /**
+   * Test block reordering by dragging rows
+   *
+   */
   public function testBlockReorderByDrag() {
     // show Group A with Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(TRUE);
 
-    // Set order by dragging
-    $page = $this->getSession()->getPage();
-
-
-    // swap a1 and a2 weights and save
-    $handle = "//a[@class='tabledrag-handle']";
-    $query = "//tr[@data-drupal-selector='edit-blocks-a2']";
-    $row = $page->find('xpath', $query);
-    $this->assertNotNull($row, "$query failed.");
-    $dragged = $row->find('xpath', $handle);
-    $this->assertNotNull($dragged, "$handle failed.");
-    $query = "//tr[@data-drupal-selector='edit-blocks-a1']" . $handle;
-    $target = $page->find('xpath', $query);
-    $this->assertNotNull($target, "failed $query");
-    $dragged->dragTo($target);
-    // Check that the 'unsaved changes' text appeared in the message area.
-    $this->assertSession()->pageTextContains('You have unsaved changes.');
+    // swap a1 and a2 order and save
+    $this->dragBlockToTarget('a2', 'a1');
     $this->submitForm([], 'Save blocks');
-    // $this->getSession()->getPage()->pressButton('Save blocks');
 
-    // Retest block order
-    $this->getBlockLayoutPage('ALL-GROUP');
+    // test order
     $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
-    $this->assertBlockOrder($expected_order);
+    $this->getBlockLayoutPage('ALL-GROUP');
+    $this->assertBlockOrder($expected_order,
+      "Dragging a2 to a1 with 'Show Global Blocks' checked.");
 
-    // now, show Group A only and reset original weights
+    // show Group A without Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(FALSE);
+
+    // swap a1 and a2 again to restore original order
     $this->dragBlockToTarget('a1', 'a2');
-    $this->getSession()->getPage()->pressButton('Save blocks');
 
-    // Retest block order
-    $this->getBlockLayoutPage('ALL-GROUP');
+    // test order
     $expected_order = ['g1', 'g2', 'g3', 'b1', 'a1', 'b2', 'a2', 'b3'];
-    $this->assertBlockOrder($expected_order);
-
+    $this->getBlockLayoutPage('ALL-GROUP');
+    $this->assertBlockOrder($expected_order,
+      "Dragging a1 to a2 with 'Show Global Blocks' unchecked.");
   }
 
-
-  /**
-   *
-   */
-  public function DONTtestWeightRange() {
-
-    // check placed
-    $this->assertBlocksPlaced();
-
-    // test weight range for a global block
-    $this->getBlockLayoutPage();
-    $this->assertWeightRange('g1');
-
-    // test weight range for a group block
-    $this->getBlockLayoutPage('group_a');
-    $this->assertWeightRange('a1');
-  }
 
   /**
    * Assert that all $this->blocks are indeed placed
@@ -344,17 +338,20 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
 
   protected function dragBlockToTarget($dragged_block_id, $target_block_id) {
     $page = $this->getSession()->getPage();
-    $handle = "//a[@class='table-drag-handle']";
-    $query = "//tr[@data-drupal-selector='edit-blocks-$dragged_block_id']" . $handle;
-    $dragged = $page->find('xpath', $query);
-    $this->assertNotNull($dragged, "failed $query");
-    $query = "//tr[@data-drupal-selector='edit-blocks-$target_block_id']" . $handle;
-    $target = $page->find('xpath', $query);
-    $this->assertNotNull($target, "failed $query");
+    $handle = ".//a[@class='tabledrag-handle']";
+    $query = "//tr[@data-drupal-selector='edit-blocks-$dragged_block_id']";
+    $row = $page->find('xpath', $query);
+    $this->assertNotNull($row, "failed $query");
+    $dragged = $row->find('xpath', $handle);
+    $this->assertNotNull($dragged, "failed $query/$handle");
+    $query = "//tr[@data-drupal-selector='edit-blocks-$target_block_id']";
+    $row = $page->find('xpath', $query);
+    $this->assertNotNull($row, "failed $query");
+    $target = $row->find('xpath', $handle);
+    $this->assertNotNull($target, "failed $query/$handle");
     $dragged->dragTo($target);
-    // Check that the 'unsaved changes' text appeared in the message area.
     $this->assertSession()->pageTextContains('You have unsaved changes.');
-    // $page->pressButton('Save blocks');
+    $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
   }
 
   /**
@@ -424,24 +421,9 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
   }
 
-  protected function setBlockWeight($block_id, $weight) {
-    $page = $this->getSession()->getPage();
-    $select = $page->findField("blocks[$block_id][weight]");
-    // verify we can find select field and set the weight
-    $this->assertTrue($select, "No weight select for $block_id");
-    $this->assertTrue(
-      $select->find('xpath', "./option[@value='$weight']"),
-      "No weight-select option $weight for $block_id."
-    );
-
-    // assert number of weight select options
-    $select->setValue($weight);
-    // $this->submitForm([], 'Save blocks');
-    $page->pressButton('Save blocks');
-    // $this->assertEquals($select->getValue(), $weight, "($block_id) getValue()");
-  }
-
   /**
+   * Place global blocks used in test
+   *
    * @throws \Behat\Mink\Exception\ElementNotFoundException
    */
   protected function placeGlobalBlocks() {
