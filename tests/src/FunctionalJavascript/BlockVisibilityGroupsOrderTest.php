@@ -45,11 +45,25 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   protected $blockValues;
 
   /**
+   * Initial block order after setUp
+   *
+   * @var array
+   */
+  protected $orderInitial;
+
+  /**
+   * Order all blocks after a1 and a2 swapped
+   *
+   * @var @array
+   */
+  protected $orderSwapped;
+
+  /**
    * Order of global and group blocks that should not change
    *
    * @var array
    */
-  protected $stable_order;
+  protected $orderStableBlocks;
 
   /**
    * The virtual user administrating the test
@@ -66,7 +80,10 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   protected $path;
 
   /**
-   * Set up the test
+   * Test setup
+   *
+   * @throws \Behat\Mink\Exception\ElementNotFoundException
+   * @throws \Behat\Mink\Exception\ResponseTextException
    */
   protected function setUp() {
     parent::setUp();
@@ -147,7 +164,10 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
 
     ];
 
-    $this->stable_order = ['g1', 'g2', 'g3', 'b1', 'b2', 'b3'];
+    // block order
+    $this->orderInitial = ['g1', 'g2', 'g3', 'b1', 'a1', 'b2', 'a2', 'b3'];
+    $this->orderSwapped = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
+    $this->orderStableBlocks = ['g1', 'g2', 'g3', 'b1', 'b2', 'b3'];
 
     // get block admin page
     $this->path = $this->getBlockLayoutPage('ALL-GROUP');
@@ -166,19 +186,11 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     foreach ($this->blockValues as $id => $values) {
       $edit["blocks[$id][weight]"] = (string) $values['setup_weight'];
     }
-    // $this->submitForm($edit, t('Save blocks'), 'block-admin-display-form');
-    $this->assertSession()->pageTextNotContains('You have unsaved changes.');
+    $this->assertSession()
+         ->pageTextNotContains('You have unsaved changes.');
 
-  }
+    $this->assertBlockOrder($this->orderInitial);
 
-
-  /**
-   * Verify that setUp() placed and ordered blocks as intended.
-   */
-  public function testSetup() {
-    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a1', 'b2', 'a2', 'b3'];
-    $this->getBlockLayoutPage('ALL-GROUP');
-    $this->assertBlockOrder($expected_order);
   }
 
   /**
@@ -208,16 +220,15 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     // show Group A with Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(TRUE);
+    $this->assertBlocksHidden(['b1', 'b2', 'b3']);
 
     // swap a1 and a2 weights and save
     $this->setWeights(['a1' => 3, 'a2' => 1]);
 
     // Retest block order
     $this->getBlockLayoutPage('ALL-GROUP');
-    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
-    $this->assertBlockOrder($expected_order,
+    $this->assertBlockOrder($this->orderSwapped,
       "Swapping a1, a2 weights with global blocks showing.");
-
   }
 
   /**
@@ -230,12 +241,12 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     // show Group A only and reset original weights
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(FALSE);
+    $this->assertBlocksHidden(['g1', 'g2', 'g3', 'b1', 'b2', 'b3']);
     $this->setWeights(['a1' => 3, 'a2' => 1]);
 
     // test block order
     $this->getBlockLayoutPage('ALL-GROUP');
-    $expected_order = ['g1', 'g2', 'g3', 'b1', 'a2', 'b2', 'a1', 'b3'];
-    $this->assertBlockOrder($expected_order,
+    $this->assertBlockOrder($this->orderSwapped,
       "Swapping a1, a2 weights with global blocks hidden.");
   }
 
@@ -243,6 +254,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
    * Test block reordering by dragging rows - showing global blocks
    *
    * Until dragTo() issue is resolved, must only drag higher value to lower
+   *
    * @see https://www.drupal.org/node/2769825
    *
    */
@@ -250,6 +262,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     // show Group A with Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(TRUE);
+    // $this->assertBlocksHidden(['b1', 'b2', 'b3']);
 
     // swap a1 and a2 order and save
     $this->dragBlockToTarget('a2', 'a1');
@@ -259,7 +272,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $msg = "Dragging a1 to a2 with global blocks showing";
     $this->getBlockLayoutPage('ALL-GROUP');
     $this->assertBlockOrder(['a2', 'a1'], $msg);
-    $this->assertBlockOrder($this->stable_order, $msg);
+    $this->assertBlockOrder($this->orderStableBlocks, $msg);
   }
 
 
@@ -267,6 +280,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
    * Test block reordering by dragging rows - hiding global blocks
    *
    * Until dragTo() issue is resolved, must only drag higher value to lower
+   *
    * @see https://www.drupal.org/node/2769825
    *
    */
@@ -275,6 +289,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     // show Group A without Globals
     $this->getBlockLayoutPage('group_a');
     $this->setShowGlobal(FALSE);
+    // $this->assertBlocksHidden(['g1', 'g2', 'g3', 'b1', 'b2', 'b3']);
     $page = $this->getSession()->getPage();
     $this->assertFalse($page->has('xpath',
       '//div[class="messages messages--error"]'),
@@ -291,7 +306,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $msg = "Dragging a1 to a2 with global blocks hidden";
     $this->getBlockLayoutPage('ALL-GROUP');
     $this->assertBlockOrder(['a2', 'a1'], $msg);
-    $this->assertBlockOrder($this->stable_order, $msg);
+    $this->assertBlockOrder($this->orderStableBlocks, $msg);
   }
 
 
@@ -303,12 +318,12 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $this->getBlockLayoutPage('ALL-GROUP');
     $page = $this->getSession()->getPage();
 
-    $block_ids = array_keys($this->blocks);
+    $blockIds = array_keys($this->blocks);
 
     // check that blocks are there.
-    foreach ($block_ids as $block_id) {
-      $weight_select = $page->findField("blocks[$block_id][weight]");
-      $this->assertNotNull($weight_select, "Block $block_id on page.");
+    foreach ($blockIds as $id) {
+      $weightSelect = $page->findField("blocks[$id][weight]");
+      $this->assertNotNull($weightSelect, "Block $id on page.");
     }
   }
 
@@ -318,19 +333,19 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
    *
    * @see BlockVisibilityGroupdListBuilder::parent::buildBlocksForm()
    *
-   * @param $block_id
+   * @param $blockId
    */
-  protected function assertWeightRange($block_id) {
+  protected function assertWeightRange($blockId) {
 
     // we should have a placed block
-    $this->assertTrue(key_exists($block_id, $this->blocks),
-      "Block $block_id is not placed.");
+    $this->assertTrue(key_exists($blockId, $this->blocks),
+      "Block $blockId is not placed.");
 
     // count placed blocks
     $count = count($this->blocks);
 
     // apply appropriate query when the block is in a group
-    $group_id = $this->blockValues[$block_id]['group'];
+    $group_id = $this->blockValues[$blockId]['group'];
     if ($group_id) {
       $this->getBlockLayoutPage($group_id);
       $this->setShowGlobal(FALSE);
@@ -341,54 +356,78 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $page = $this->getSession()->getPage();
 
     // find and verify select field
-    $weight_select = $page->findField("blocks[$block_id][weight]");
-    $this->assertTrue($weight_select, "No weight select field for $block_id.");
+    $weightSelect = $page->findField("blocks[$blockId][weight]");
+    $this->assertTrue($weightSelect,
+      "No weight select field for $blockId.");
 
     // assert number of weight select options
-    $options = $weight_select->findAll('xpath', './option');
+    $options = $weightSelect->findAll('xpath', './option');
     $values = array_map(function ($option) {
       return $option->getValue();
     }, $options);
     $this->assertGreaterThanOrEqual($count, count($values),
-      "with $count placed blocks, $block_id is only allowed weights " .
+      "with $count placed blocks, $blockId is only allowed weights " .
       join(' ', $values));
+  }
+
+  /**
+   * Assert that should-be-hidden blocks actually are.
+   *
+   * @param $hiddenIds
+   */
+  protected function assertBlocksHidden($hiddenIds) {
+    $page = $this->getSession()->getPage();
+    foreach ($hiddenIds as $id) {
+      $query = "//tr[@data-drupal-selector='edit-blocks-$id']";
+      $this->assertFalse($page->has('xpath', $query),
+        "Block $id is visible -- but shouldn't be.");
+    }
   }
 
   /**
    * Are blocks ordered in Block layouts page as expected?
    *
-   * @param $expected_ids
+   * @param $expectedIds
+   * @param $message
    */
-  protected function assertBlockOrder($expected_ids, $message = '') {
+  protected function assertBlockOrder($expectedIds, $message = '') {
     $page = $this->getSession()->getPage();
     $rows = $page->findAll('xpath', '//tr[@data-drupal-selector]');
-    $actual_ids = [];
+    $actualIds = [];
     foreach ($rows as $row) {
       $selector = $row->getAttribute('data-drupal-selector');
-      foreach ($expected_ids as $id) {
+      foreach ($expectedIds as $id) {
         if ($selector == "edit-blocks-$id") {
-          $actual_ids[] = $id;
+          $actualIds[] = $id;
           break;
         }
       }
     }
-    $this->assertSame($expected_ids, $actual_ids,
+    $this->assertSame($expectedIds, $actualIds,
       'Unexpected order ' . $message);
   }
 
-  protected function dragBlockToTarget($dragged_block_id, $target_block_id) {
+  /**
+   * Drag block to reorder
+   *
+   * @param $draggedId
+   * @param $targetId
+   *
+   * @throws \Behat\Mink\Exception\ResponseTextException
+   */
+  protected function dragBlockToTarget($draggedId, $targetId) {
     $page = $this->getSession()->getPage();
     $handle = ".//a[@class='tabledrag-handle']";
 
-    // get dragged's handle
-    $query = "//tr[@data-drupal-selector='edit-blocks-$dragged_block_id']";
+    // get draggedId's handle
+    $query = "//tr[@data-drupal-selector='edit-blocks-$draggedId']";
     $row = $page->find('xpath', $query);
     $this->assertNotNull($row, "failed $query");
     $dragged = $row->find('xpath', $handle);
     $this->assertNotNull($dragged, "failed $query/$handle");
 
     // get target's handle
-    $query = "//tr[@data-drupal-selector='edit-blocks-$target_block_id']";
+    $query = "//tr[@data-drupal-selector='edit-blocks-$targetId']";
     $row = $page->find('xpath', $query);
     $this->assertNotNull($row, "failed $query");
     $target = $row->find('xpath', $handle);
@@ -396,7 +435,6 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
 
     // drag and give JavaScript some time to manipulate DOM
     $dragged->dragTo($target);
-    // @todo: do we need this?
     $this->assertJsCondition('jQuery(".tabledrag-changed-warning").is(":visible")');
     $this->assertFalse($page->has('css', '.messages.messages--error'),
       "Illegal choice detected after dragging.");
@@ -407,23 +445,24 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
    * HTTP get and return path to admin block layout page with selected
    * block visibility group, specified by its id.
    *
-   * @param string $group_id
+   * @param string $groupId
    *
    * @return string (path URL)
    */
-  protected function getBlockLayoutPage($group_id = '') {
+  protected function getBlockLayoutPage($groupId = '') {
     $default_theme = $this->config('system.theme')->get('default');
     $path = 'admin/structure/block/list/' . $default_theme;
-    $valid_ids = array_keys($this->groups);
-    $valid_ids[] = 'ALL-GROUP';
-    if (!$group_id || !in_array($group_id, $valid_ids)) {
-      $group_id = 'UNSET-GROUP';
+    $validIds = array_keys($this->groups);
+    $validIds[] = 'ALL-GROUP';
+    if (!$groupId || !in_array($groupId, $validIds)) {
+      $groupId = 'UNSET-GROUP';
     }
     $this->drupalGet($path, [
       'query' => [
-        'block_visibility_group' => $group_id,
+        'block_visibility_group' => $groupId,
       ],
     ]);
+
     return $path;
   }
 
@@ -436,14 +475,22 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $checkbox = $this->getSession()
                      ->getPage()
                      ->findField('block_visibility_group_show_global');
-    if ($checkbox) {
-      if ($check) {
-        $checkbox->check();
-      }
-      else {
-        $checkbox->uncheck();
-      }
+    $this->assertNotNull($checkbox);
+    if ($check) {
+      $checkbox->check();
+      $this->assertTrue($checkbox->isChecked(),
+        'Show global checkbox should be checked.');
     }
+    else {
+      $checkbox->uncheck();
+      $this->assertFalse($checkbox->isChecked(),
+        'Show global checkbox should not be checked.');
+    }
+    // Seems Mink doesn't respond to onchange attribute on checkbox, so we need to explicitly do this
+    $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
+    // jQuery calls the function once the DOM is ready
+    $this->assertJsCondition('jQuery(function () { return true; })', 10000,
+      'Page not reloaded.');
   }
 
   /**
@@ -455,19 +502,24 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
    */
   protected function setWeights($block_weights = []) {
     $page = $this->getSession()->getPage();
-    if (count($block_weights)) {
-      foreach ($block_weights as $id => $weight) {
-        $select = $page->findField("blocks[$id][weight]");
-        $select->selectOption((string) $weight);
+    try {
+      if (count($block_weights)) {
+        foreach ($block_weights as $id => $weight) {
+          $select = $page->findField("blocks[$id][weight]");
+          $select->selectOption((string) $weight);
+
+        }
       }
-    }
-    else {
-      foreach ($this->blockValues as $id => $values) {
-        $select = $page->findField("blocks[$id][weight]");
-        $select->selectOption((string) $values['setup_weight']);
+      else {
+        foreach ($this->blockValues as $id => $values) {
+          $select = $page->findField("blocks[$id][weight]");
+          $select->selectOption((string) $values['setup_weight']);
+        }
       }
+      $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
+    } catch (\Exception $e) {
+      $this->fail($e->getMessage());
     }
-    $this->submitForm([], t('Save blocks'), 'block-admin-display-form');
   }
 
   /**
@@ -477,14 +529,14 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
    */
   protected function placeGlobalBlocks() {
 
-    // Find global block values
-    $block_values = array_filter($this->blockValues, function ($values) {
-      return $values['group'] == '';
-    });
+    $globalBlockValues = array_filter($this->blockValues,
+      function ($values) {
+        return $values['group'] == '';
+      });
 
     // Place the global blocks
-    foreach ($block_values as $block_id => $values) {
-      $this->blocks[$block_id] = $this->drupalPlaceBlock(
+    foreach ($globalBlockValues as $blockId => $values) {
+      $this->blocks[$blockId] = $this->drupalPlaceBlock(
         $values['plugin_id'],
         $values['settings']
       );
@@ -500,17 +552,17 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
   protected function placeGroupBlocks($group_id) {
 
     // Find blocks assigned to group in setUp
-    $block_values = array_filter($this->blockValues,
+    $groupBlockValues = array_filter($this->blockValues,
       function ($values) use ($group_id) {
         return $values['group'] == $group_id;
       });
 
     // Place blocks
-    if (count($block_values)) {
+    if (count($groupBlockValues)) {
       $this->path = $this->getBlockLayoutPage($group_id);
-      foreach ($block_values as $block_id => $values) {
+      foreach ($groupBlockValues as $blockId => $values) {
         $group = $this->groups[$group_id];
-        $this->blocks[$block_id] = $this->placeBlockInGroup(
+        $this->blocks[$blockId] = $this->placeBlockInGroup(
           $values['plugin_id'],
           $group->id(),
           $values['settings']);
@@ -539,6 +591,7 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
       $group->addCondition($config);
     }
     $group->save();
+
     return $group;
   }
 
@@ -551,7 +604,11 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
    *
    * @return \Drupal\block\Entity\Block
    */
-  protected function placeBlockInGroup($plugin_id, $group_id, $settings = []) {
+  protected function placeBlockInGroup(
+    $plugin_id,
+    $group_id,
+    $settings = []
+  ) {
     $settings += [
       'label_display' => 'visible',
       'label'         => $this->randomMachineName(),
