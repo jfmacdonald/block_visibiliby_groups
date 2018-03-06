@@ -83,6 +83,14 @@ class VisibilityTest extends BlockVisibilityGroupsTestBase {
     $this->assertText($block->label(), 'Block shows up on page node.');
     $this->drupalGet('user');
     $this->assertNoText($block->label(), 'Block does not show up on user page.');
+
+    $this->container->get('module_installer')->uninstall(['block_visibility_groups']);
+
+    // After uninstall conditions will not apply.
+    $this->drupalGet('node/' . $page_node->id());
+    $this->assertText($block->label(), 'Block shows up on page node.');
+    $this->drupalGet('user');
+    $this->assertText($block->label(), 'Block shows up on user node.');
   }
 
   /**

@@ -379,8 +379,11 @@ class BlockVisibilityGroupsOrderTest extends JavascriptTestBase {
     $page = $this->getSession()->getPage();
     foreach ($hiddenIds as $id) {
       $query = "//tr[@data-drupal-selector='edit-blocks-$id']";
-      $this->assertFalse($page->has('xpath', $query),
-        "Block $id is visible -- but shouldn't be.");
+      $row = $page->find('xpath', $query);
+      if ($row) {
+        $this->assertTrue($row->has('css', '.visually-hidden'),
+          "Block $id is visible -- but shouldn't be.");
+      }
     }
   }
 
